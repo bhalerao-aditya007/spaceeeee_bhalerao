@@ -4,5 +4,6 @@ COPY requirements_web.txt .
 RUN pip install --no-cache-dir -r requirements_web.txt
 COPY . .
 ENV PORT=8000
+ENV PYTHONPATH=/app
 EXPOSE 8000
 CMD ["python", "-u", "interface/app.py"]
