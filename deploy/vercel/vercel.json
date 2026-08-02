@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://AtharvDeshmukh-spaceeeee1.hf.space/api/$1"
+      "destination": "https://spaceeeee-bhalerao.onrender.com/api/$1"
     },
     {
       "source": "/ws",
-      "destination": "https://AtharvDeshmukh-spaceeeee1.hf.space/ws"
+      "destination": "https://spaceeeee-bhalerao.onrender.com/ws"
     }
   ]
 }
