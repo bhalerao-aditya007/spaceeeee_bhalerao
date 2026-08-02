@@ -1065,6 +1065,7 @@
 // STATE
 // ═══════════════════════════════════════════════════════════════════════
 let ws = null;
+const BACKEND_URL = "https://spaceeeee-bhalerao.onrender.com"; 
 let wsConnected = false;
 let overrideLevel = "acknowledge";
 let cameraStream = null;
@@ -1078,8 +1079,7 @@ let eventCount = 0;
 // WEBSOCKET
 // ═══════════════════════════════════════════════════════════════════════
 function connectWS() {
-    const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    ws = new WebSocket(`${proto}//${location.host}/ws`);
+    ws = new WebSocket(BACKEND_URL.replace("https:", "wss:") + "/ws");
 
     ws.onopen = () => {
         wsConnected = true;
@@ -1520,7 +1520,7 @@ async function sendFrameToAPI(base64Data) {
     const t0 = performance.now();
 
     try {
-        const r = await fetch("/api/perception/frame", {
+        const r = await fetch(BACKEND_URL + "/api/perception/frame", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ image: base64Data })
@@ -1565,7 +1565,7 @@ async function uploadImage(event) {
 // ═══════════════════════════════════════════════════════════════════════
 async function checkModelStatus() {
     try {
-        const r = await fetch("/api/model/status");
+        const r = await fetch(BACKEND_URL + "/api/model/status");
         const d = await r.json();
         const badge = document.getElementById("model-badge");
         const dot = document.getElementById("dot-model");
@@ -1667,7 +1667,7 @@ function summarize(ch, d) {
 // ═══════════════════════════════════════════════════════════════════════
 async function fetchStatus() {
     try {
-        const r = await fetch("/api/status");
+        const r = await fetch(BACKEND_URL + "/api/status");
         const d = await r.json();
         document.getElementById("stat-decisions").textContent = d.decision_count || 0;
     } catch (e) { }
@@ -1678,7 +1678,7 @@ async function startOrch() {
     btn.disabled = true;
     btn.textContent = "Starting…";
     try {
-        const r = await fetch("/api/orchestrator/start", { method: "POST" });
+        const r = await fetch(BACKEND_URL + "/api/orchestrator/start", { method: "POST" });
         const d = await r.json();
         if (d.error) {
             addLog("SYSTEM", "Error: " + d.error);
@@ -1696,7 +1696,7 @@ async function startOrch() {
 
 async function stopOrch() {
     try {
-        await fetch("/api/orchestrator/stop", { method: "POST" });
+        await fetch(BACKEND_URL + "/api/orchestrator/stop", { method: "POST" });
         updateDot("dot-orch", "off");
         document.getElementById("btn-start").disabled = false;
         document.getElementById("btn-stop").disabled = true;
@@ -1710,7 +1710,7 @@ async function runScenario() {
     const btn = document.getElementById("btn-scenario");
     btn.disabled = true;
     try {
-        const r = await fetch(`/api/scenario/${name}`, { method: "POST" });
+        const r = await fetch(`${BACKEND_URL}/api/scenario/${name}`, { method: "POST" });
         const d = await r.json();
         if (d.error) {
             addLog("SYSTEM", "Scenario error: " + d.error);
@@ -1727,7 +1727,7 @@ async function runScenario() {
 
 async function injectPerception() {
     try {
-        const r = await fetch("/api/inject/perception", {
+        const r = await fetch(BACKEND_URL + "/api/inject/perception", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ jensen_gain: 2.5, confidence: "moderate", distance: 10.0 })
@@ -1740,7 +1740,7 @@ async function injectPerception() {
 
 async function injectCognition() {
     try {
-        const r = await fetch("/api/inject/cognition", {
+        const r = await fetch(BACKEND_URL + "/api/inject/cognition", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ anomaly: false, recommended_action: "proceed_slow" })
@@ -1772,7 +1772,7 @@ async function sendOverride() {
     }
 
     try {
-        const r = await fetch("/api/override", {
+        const r = await fetch(BACKEND_URL + "/api/override", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1809,7 +1809,7 @@ document.getElementById("chat-input").addEventListener("keydown", async (e) => {
     addChatMsg("YOU", text, "");
 
     try {
-        const r = await fetch("/api/chat", {
+        const r = await fetch(BACKEND_URL + "/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text: text })
