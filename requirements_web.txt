@@ -1,23 +1,9 @@
-# Web dashboard + model inference dependencies
-#
-# IMPORTANT: install torch/torchvision FIRST, from the CPU-only wheel index,
-# before this file — the same way the Dockerfile does:
-#
-#   pip install torch==2.2.0+cpu torchvision==0.17.0+cpu \
-#       --index-url https://download.pytorch.org/whl/cpu
-#   pip install -r requirements_web.txt
-#
-# `timm` (below) depends on torch/torchvision transitively, so if you skip
-# the step above, plain `pip install -r requirements_web.txt` will still
-# "work" but silently pulls the default multi-GB CUDA build of torch from
-# PyPI instead of the small CPU-only build actually used in production.
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 websockets>=12.0
-redis>=5.0.0
+fakeredis>=2.20.0
 numpy<2.0.0
 scipy>=1.11.0
 Pillow>=10.0.0
 pydantic>=2.0.0
-timm>=0.9.0
-matplotlib>=3.7.0
+onnxruntime>=1.17.0
