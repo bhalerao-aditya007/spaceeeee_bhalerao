@@ -99,7 +99,7 @@ def _download_model_if_needed():
     not already present locally (or is a stale Git-LFS pointer file). This
     sidesteps needing `git lfs pull` to run during Render's build.
     """
-    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best.pt")
+    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best.onnx")
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
     # Already present and looks like a real model file, not an LFS pointer
@@ -108,7 +108,7 @@ def _download_model_if_needed():
               f"({os.path.getsize(model_path) / 1e6:.1f}MB) — skipping download")
         return
 
-    file_id = os.environ.get("1h-pSmUkO2N0JiYAtnNdABFOjgAlOMaQ5")
+    file_id = os.environ.get("GDRIVE_ONNX_FILE_ID")
     if not file_id:
         print("  [Model] GDRIVE_ONNX_FILE_ID env var not set — skipping download")
         return
@@ -137,7 +137,7 @@ def _load_perception_model():
     if not _PERC:
         print("  [Model] PerceptionAgent module not available")
         return
-    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best.pt")
+    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best.onnx")
     if not os.path.exists(model_path):
         print(f"  [Model] Checkpoint not found: {model_path}")
         return
