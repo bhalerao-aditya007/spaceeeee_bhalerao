@@ -93,12 +93,51 @@ _perception_agent: Optional[Any] = None
 _MODEL_LOADED = False
 _MODEL_INFO = {}
 
+def _download_model_if_needed():
+    """
+    Fetch the ONNX checkpoint from Google Drive at container startup if it's
+    not already present locally (or is a stale Git-LFS pointer file). This
+    sidesteps needing `git lfs pull` to run during Render's build.
+    """
+    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best.pt")
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+
+    # Already present and looks like a real model file, not an LFS pointer
+    if os.path.exists(model_path) and os.path.getsize(model_path) > 1_000_000:
+        print(f"  [Model] Checkpoint already present locally "
+              f"({os.path.getsize(model_path) / 1e6:.1f}MB) — skipping download")
+        return
+
+    file_id = os.environ.get("1h-pSmUkO2N0JiYAtnNdABFOjgAlOMaQ5")
+    if not file_id:
+        print("  [Model] GDRIVE_ONNX_FILE_ID env var not set — skipping download")
+        return
+
+    try:
+        import gdown
+    except ImportError:
+        print("  [Model] gdown not installed — check requirements_web.txt")
+        return
+
+    print(f"  [Model] Downloading checkpoint from Google Drive (id={file_id})...")
+    try:
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, model_path, quiet=False)
+        if os.path.exists(model_path) and os.path.getsize(model_path) > 1_000_000:
+            print(f"  [Model] Download complete: {os.path.getsize(model_path) / 1e6:.1f}MB")
+        else:
+            print("  [Model] Download finished but file is too small — "
+                  "check Drive sharing permissions (must be 'Anyone with the link')")
+    except Exception as exc:
+        print(f"  [Model] Download failed: {exc}")
+        traceback.print_exc()
+
 def _load_perception_model():
     global _perception_agent, _MODEL_LOADED, _MODEL_INFO
     if not _PERC:
         print("  [Model] PerceptionAgent module not available")
         return
-    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best_merged.onnx")
+    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best.pt")
     if not os.path.exists(model_path):
         print(f"  [Model] Checkpoint not found: {model_path}")
         return
@@ -134,6 +173,7 @@ def _load_perception_model():
         print(f"  [Model] Failed to load: {exc}")
         traceback.print_exc()
 
+_download_model_if_needed()
 _load_perception_model()
 
 # ---------------------------------------------------------------------------
