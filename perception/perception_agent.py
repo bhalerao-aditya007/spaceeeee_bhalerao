@@ -86,107 +86,37 @@ class PerceptionAgent:
         print(f"  Jensen Gain: {'enabled' if run_jensen_gain else 'disabled'}")
 
     def _load_model(self, model_path: str):
-        import torch
-
-        checkpoint = torch.load(model_path, map_location='cpu',
-                                weights_only=False)
-
-        cfg = checkpoint.get('cfg', {})
-        model_class = checkpoint.get('model_class', 'SpacecraftPoseModel')
-        backbone = cfg.get('backbone', 'efficientnet_b3')
-
-        if model_class == 'PoseNet_ResNet50':
-            from perception.models.pose_model import PoseNet_ResNet50
-            self._model = PoseNet_ResNet50(pretrained=False)
-            backbone = 'resnet50'
-        else:
-            from perception.models.pose_model import SpacecraftPoseModel
-            self._model = SpacecraftPoseModel(
-                backbone_name=backbone,
-                pretrained=False
-            )
-
-        self._model.load_state_dict(checkpoint['state_dict'])
-        self._model.eval()
-
-        self._norm_mean = cfg.get('norm_mean_synth', [0.485, 0.456, 0.406])
-        self._norm_std = cfg.get('norm_std_synth', [0.229, 0.224, 0.225])
-        
-        if 'norm_mean_real' in cfg and 'norm_std_real' in cfg:
-            self._norm_mean_real = cfg['norm_mean_real']
-            self._norm_std_real = cfg['norm_std_real']
-            
-        self._img_size = cfg.get('img_size', 224)
-        self._device = 'cpu'
-        self._model.to(self._device)
-
-        epoch = checkpoint.get('epoch', '?')
-        rot_err = checkpoint.get('rot_err_deg', '?')
-        trans_err = checkpoint.get('trans_err_m', '?')
-
-        print(f"Model loaded: {backbone}")
-        print(f"  Epoch: {epoch}")
-        print(f"  Rot error: {rot_err:.2f}°")
-        print(f"  Trans error: {trans_err:.4f}m")
-        print(f"  Device: {self._device}")
-
+        import onnxruntime as ort
+        self._session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+        self._img_size = 224
+        self._norm_mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+        self._norm_std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
         self._pose_fn = None
-
+        print(f"ONNX model loaded: {model_path}")
     def _pose_fn_wrapper(self, image: np.ndarray):
-        if self._model is not None:
-            import torch
-            import torchvision.transforms as T
-
-            mean_intensity = image.mean()
-            if hasattr(self, '_norm_mean_real') and mean_intensity < 0.25:
-                # Real images (SunLAMP) are very dark, mostly black space
-                norm_m = self._norm_mean_real
-                norm_s = self._norm_std_real
-            else:
-                norm_m = self._norm_mean
-                norm_s = self._norm_std
-
-            transform = T.Compose([
-                T.ToPILImage(),
-                T.Resize((self._img_size, self._img_size)),
-                T.ToTensor(),
-                T.Normalize(mean=norm_m, std=norm_s)
-            ])
-
-            if image.ndim == 2:
-                image = np.stack([image] * 3, axis=-1)
-            elif image.ndim == 3 and image.shape[2] == 1:
-                image = np.repeat(image, 3, axis=2)
-
+        if hasattr(self, "_session"):
+            from PIL import Image
             if image.dtype != np.uint8:
-                image_uint8 = (image * 255).clip(0, 255).astype(np.uint8)
+                image_u8 = (image * 255).clip(0, 255).astype(np.uint8)
             else:
-                image_uint8 = image
+                image_u8 = image
+            pil = Image.fromarray(image_u8).resize((self._img_size, self._img_size))
+            arr = np.asarray(pil, dtype=np.float32) / 255.0
+            arr = (arr - self._norm_mean) / self._norm_std
+            arr = arr.transpose(2, 0, 1)[None, ...].astype(np.float32)  # (1,3,H,W)
 
-            tensor = transform(image_uint8).unsqueeze(0).to(self._device)
-
-            with torch.no_grad():
-                quat_tensor, trans_tensor = self._model(tensor)
-
-            q = quat_tensor[0].cpu().numpy()
+            quat, trans = self._session.run(None, {"image": arr})
+            q = quat[0]                       # [w,x,y,z]
             q_scipy = np.array([q[1], q[2], q[3], q[0]])
             R = Rotation.from_quat(q_scipy).as_matrix()
-            t = trans_tensor[0].cpu().numpy()
-
-            return R, t
+            return R, trans[0]
 
         elif self._pose_fn is not None:
             result = self._pose_fn(image)
-            if isinstance(result, tuple):
-                R, t = result
-            else:
-                R = result
-                t = np.zeros(3)
+            R, t = result if isinstance(result, tuple) else (result, np.zeros(3))
             return np.array(R), np.array(t)
-
-        else:
-            raise RuntimeError("No model or pose function loaded")
-
+        raise RuntimeError("No model loaded")
+        
     def _R_to_quaternion(self, R: np.ndarray) -> list:
         rot = Rotation.from_matrix(R)
         q = rot.as_quat()
