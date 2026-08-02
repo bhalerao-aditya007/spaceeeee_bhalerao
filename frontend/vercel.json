@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://spaceeeee-bhalerao.onrender.com/api/$1"
+    },
+    {
+      "source": "/ws",
+      "destination": "https://spaceeeee-bhalerao.onrender.com/ws"
+    }
+  ]
+}
