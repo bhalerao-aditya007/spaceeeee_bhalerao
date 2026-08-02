@@ -98,7 +98,7 @@ def _load_perception_model():
     if not _PERC:
         print("  [Model] PerceptionAgent module not available")
         return
-    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best.onnx")
+    model_path = os.path.join(PROJECT_ROOT, "perception", "checkpoints", "best_merged.onnx")
     if not os.path.exists(model_path):
         print(f"  [Model] Checkpoint not found: {model_path}")
         return
